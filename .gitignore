@@ -1,3 +1,4 @@
 *~
 cli/
 SonosNowPlaying/*.esp32.*
+SonosNowPlaying/credentials.h
