@@ -11,10 +11,12 @@
 MCUFRIEND_kbv tft;
 WiFiServer server(80);
 
-#define BUFFER_H_SIZE 320
-#define BUFFER_V_SIZE 100
+/* HEADER_DATA pkg_length, row_index, col_offset, col_length */
+#define HEADER_LENGTH (1 + 1 + 1 + 1)
+#define BUFFER_H_SIZE 480
 
-static uint8_t bitmapMemory[BUFFER_H_SIZE*BUFFER_V_SIZE*2];
+
+static uint16_t dataBuffer16[HEADER_LENGTH + BUFFER_H_SIZE];
 
 #define BLACK   0x0000
 #define BLUE    0x001F
@@ -68,40 +70,52 @@ void loop(void)
   if (client)
     {
       Serial.println("Connected");
-      size_t bitmapPosition = 0;
-      size_t recBytes = 0;
-      size_t yPos = 80;
-      memset(bitmapMemory, 0, sizeof(bitmapMemory));
+      size_t readPos = 0;
+      uint8_t* dataBuffer8 = (uint8_t*)dataBuffer16;
+      memset(dataBuffer16, 0, sizeof(dataBuffer16));
       while(client.connected())
 	{
 	  if (client.available())
 	    {
-	      uint8_t read = client.read();
-	      bitmapMemory[bitmapPosition] = read;
-	      bitmapPosition++;
-	      recBytes++;
-	      if ((bitmapPosition % 100) == 0)
+	      int readBytes = client.read(&dataBuffer8[readPos], sizeof(dataBuffer16) - readPos);
+	      if (readBytes > 0)
 		{
-		  Serial.print(".");
-		}
-
-	      if (bitmapPosition >= sizeof(bitmapMemory))
-		{
-		  Serial.println("Done");
-		  tft.drawRGBBitmap(0, yPos, (uint16_t*)bitmapMemory, BUFFER_H_SIZE, BUFFER_V_SIZE);
-		  yPos += BUFFER_V_SIZE;
-		  memset(bitmapMemory, 0, sizeof(bitmapMemory));;
-		  bitmapPosition = 0;
-		}
-	      if (recBytes == (320*320*2))
-		{
-		  break;
+		  readPos += readBytes;
+		  
+		  if (dataBuffer16[0] == readPos)
+		    {
+		      if (dataBuffer16[3] == 0)
+			{
+			  tft.fillScreen(BLACK);
+			}
+		      else
+			{
+			  
+			  tft.drawRGBBitmap(0, dataBuffer16[1], &dataBuffer16[4], dataBuffer16[3], 1);
+			}
+		      readPos = 0;
+		      memset(dataBuffer16, 0, sizeof(dataBuffer16));
+		      client.write("ACK!");
+		    }
+		  else
+		    {
+		      if (readPos == sizeof(dataBuffer16))
+			{
+			  Serial.println("Protocol error (full buffer), stop!");
+			  client.stop();
+			  continue;
+			}
+		      else if (readPos > dataBuffer16[0])
+			{
+			  Serial.println("Protocol error (pkg error), stop!");
+			  client.stop();
+			  continue;
+			}
+		    }
 		}
 	    }
 	}
       client.stop();
-      Serial.println("Redraw");
-      tft.drawRGBBitmap(0, yPos, (uint16_t*)bitmapMemory, BUFFER_H_SIZE, BUFFER_V_SIZE);
     }
     else
     {
