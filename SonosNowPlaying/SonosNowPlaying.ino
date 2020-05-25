@@ -1,9 +1,12 @@
 /* Include used libraries */
 #include "WiFi.h"
+#include "ESPmDNS.h"
 #include "MCUFRIEND_kbv.h"
 
-/* Here we have the wifi credentials */
-#include "credentials.h"
+/* Here we have the wifi credentials and network name */
+#include "network.h"
+
+#include "ready_image.h"
 
 MCUFRIEND_kbv tft;
 WiFiServer server(80);
@@ -33,22 +36,29 @@ void setup()
     Serial.println(ID, HEX);
 
     tft.begin(ID);
-    tft.fillScreen(GREEN);
+    tft.setRotation(3);
+    tft.fillScreen(BLACK);
 
     Serial.print("Connecting to ");
     Serial.println(ssid);
+
+    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
+    WiFi.setHostname(device_name);
     WiFi.begin(ssid, password);
+    
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
       Serial.print(".");
     }
 
-    tft.fillScreen(BLACK);
+    tft.drawRGBBitmap(0, 0, image_data, IMAGE_X_SIZE, IMAGE_Y_SIZE);
+
     // Print local IP address and start web server
     Serial.println("");
     Serial.println("WiFi connected.");
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());
+    Serial.println(WiFi.getHostname());
     server.begin();
 }
 
