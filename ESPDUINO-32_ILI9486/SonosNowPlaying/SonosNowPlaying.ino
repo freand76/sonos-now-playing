@@ -82,7 +82,7 @@ void loop(void)
                 if (readBytes > 0)
 		{
                     readPos += readBytes;
-                    if (dataBuffer16[0] == readPos)
+                    if (dataBuffer16[0] == (readPos/2))
 		    {
                         if ((dataBuffer16[3] == 0) && (dataBuffer16[4] == 0))
 			{
@@ -106,7 +106,7 @@ void loop(void)
                             client.stop();
                             readPos = 0;
 			}
-                        else if (readPos > dataBuffer16[0])
+                        else if ((readPos/2) > dataBuffer16[0])
 			{
                             Serial.println("Protocol error (pkg error), stop!");
                             Serial.println(dataBuffer16[0]);
